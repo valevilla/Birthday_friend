@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Andy's Birthday Quest</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #05050a;
+            --primary: #00ffcc;
+            --secondary: #ff00ff;
+            --accent: #ffff00;
+            --danger: #ff0033;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: #fff;
+            font-family: 'Press Start 2P', cursive;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            background: radial-gradient(circle, #101025 0%, #05050a 100%);
+        }
+
+        /* Efectos */
+        body::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.15) 50%);
+            background-size: 100% 4px;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .header { text-align: center; z-index: 2; margin-bottom: 30px; }
+        .title { font-size: 0.9rem; text-shadow: 3px 3px var(--secondary); margin-bottom: 10px; }
+        .date { color: var(--accent); font-size: 0.7rem; margin-bottom: 15px; }
+        .wishes { font-size: 1.4rem; color: var(--primary); text-shadow: 2px 2px #000; animation: pulse 1s infinite; }
+
+        .game-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 40px;
+            z-index: 2;
+            flex-wrap: wrap;
+        }
+
+        /* Pastel cumple */
+        .cake {
+            position: relative;
+            width: 170px; height: 95px;
+            background: #f06292;
+            border: 4px solid #fff;
+            box-shadow: 8px 8px 0px rgba(0,0,0,0.5);
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        .cake::after { content: ""; position: absolute; top: 0; width: 100%; height: 22px; background: #fff; }
+        .candles { position: absolute; top: -35px; width: 100%; display: flex; justify-content: space-around; padding: 0 10px; box-sizing: border-box; }
+        .candle { width: 9px; height: 32px; background: var(--accent); border: 2px solid #000; position: relative; }
+        .flame { position: absolute; top: -16px; left: 50%; transform: translateX(-50%); width: 10px; height: 14px; background: #ff5722; border-radius: 50%; box-shadow: 0 0 10px #ffeb3b; animation: flicker 0.1s infinite alternate; }
+
+        /* Botón regalo */
+        .gift-btn {
+            background: var(--primary);
+            color: #000;
+            border: 4px solid #fff;
+            padding: 22px 30px;
+            font-family: 'Press Start 2P';
+            font-size: 0.8rem;
+            cursor: pointer;
+            box-shadow: 6px 6px 0px var(--secondary);
+            transition: 0.2s;
+        }
+        .gift-btn.error-mode {
+            background-color: var(--danger) !important;
+            color: #fff !important;
+            transform: scale(1.1);
+            animation: shake 0.2s infinite;
+        }
+
+        /* Ventana de sorpresa */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: none;
+            justify-content: center; align-items: center;
+            z-index: 200;
+        }
+        .modal-content {
+            background: #111;
+            border: 4px solid var(--primary);
+            padding: 25px;
+            display: flex;
+            flex-direction: row;
+            gap: 25px;
+            max-width: 95%;
+            align-items: center;
+            box-shadow: 0 0 30px var(--primary);
+        }
+
+        .camera-side { position: relative; width: 320px; height: 240px; border: 3px solid #fff; background: #000; }
+        video, canvas { position: absolute; top: 0; left: 0; width: 320px; height: 240px; }
+
+        .text-side { max-width: 250px; text-align: left; }
+        .text-side h2 { color: var(--accent); font-size: 0.8rem; margin-bottom: 12px; }
+        .text-side p { font-size: 0.55rem; line-height: 1.8; color: #eee; }
+
+        .btn-action { background: var(--secondary); color: #fff; border: 2px solid #fff; padding: 12px; font-family: 'Press Start 2P'; font-size: 0.5rem; cursor: pointer; margin-top: 15px; width: 100%; }
+
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        @keyframes flicker { from { opacity: 0.8; } to { opacity: 1; } }
+        @keyframes shake { 0%, 100% { transform: translate(0); } 25% { transform: translate(-4px, 4px); } 75% { transform: translate(4px, -4px); } }
+        .hidden { display: none !important; }
+
+        @media (max-width: 700px) {
+            .modal-content { flex-direction: column; text-align: center; }
+            .text-side { max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="title">FELIZ CUMPLEAÑOS ANDY</div>
+        <div class="date">15 DE FEBRERO</div>
+        <div class="wishes">MUCHOS ÉXITOS</div>
+    </div>
+
+    <div class="game-container">
+        <div class="cake" id="cake" onclick="triggerError()">
+            <div class="candles">
+                <div class="candle"><div class="flame"></div></div>
+                <div class="candle"><div class="flame"></div></div>
+                <div class="candle"><div class="flame"></div></div>
+            </div>
+        </div>
+        <button class="gift-btn" id="giftBtn" onclick="openGift()">ABRIR REGALO</button>
+    </div>
+
+    <div id="hint" style="font-size: 0.5rem; color: var(--primary); margin-top: 35px;">
+        [ REQUIRE ITEM: BIRTHDAY GIFT ]
+    </div>
+
+    <div class="modal-overlay" id="modal">
+        <div class="modal-content">
+            <div class="camera-side">
+                <video id="video" autoplay playsinline></video>
+                <canvas id="canvasOverlay"></canvas>
+            </div>
+            <div class="text-side">
+                <h2>MENSAJE RECIBIDO</h2>
+                <p>¡Hey Andy! Pásala increíble en tu día, crack. Eres una gran persona y un gran amigo. ¡Que este nuevo año sea un nivel lleno de éxitos!</p>
+                <button class="btn-action" onclick="takeSnapshot()">CAPTURAR FOTO FESTIVA</button>
+                <button class="btn-action" style="background:#555;" onclick="closeModal()">VOLVER AL JUEGO</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isOpened = false;
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvasOverlay');
+        const ctx = canvas.getContext('2d');
+
+        function triggerError() {
+            if (!isOpened) {
+                const btn = document.getElementById('giftBtn');
+                btn.classList.add('error-mode');
+                // Alerta de color vibrante sin texto
+                setTimeout(() => btn.classList.remove('error-mode'), 800);
+            } else {
+                const flames = document.querySelectorAll('.flame');
+                flames.forEach(f => f.classList.toggle('hidden'));
+            }
+        }
+
+        async function openGift() {
+            isOpened = true;
+            document.getElementById('modal').style.display = 'flex';
+            document.getElementById('hint').innerText = "[ MODO FESTIVO ACTIVADO ]";
+            
+            confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+
+            // Cámara activada
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                startGorroOverlay();
+            } catch (err) {
+                console.warn("Cámara bloqueada o no disponible.");
+                alert("Por favor, permite el acceso a la cámara para ver tu gorro de cumpleaños.");
+            }
+        }
+
+        function startGorroOverlay() {
+            canvas.width = 320;
+            canvas.height = 240;
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Dibujo del Gorro Fiestero
+                ctx.fillStyle = "#ff00ff";
+                ctx.beginPath();
+                ctx.moveTo(160, 20); // Punta
+                ctx.lineTo(120, 80); // Lado izquierdo
+                ctx.lineTo(200, 80); // Lado derecho
+                ctx.closePath();
+                ctx.fill();
+                
+                // Detallitos uff
+                ctx.fillStyle = "#ffff00";
+                ctx.fillRect(156, 40, 8, 8);
+                ctx.fillRect(145, 60, 6, 6);
+                ctx.fillRect(170, 60, 6, 6);
+
+                if (document.getElementById('modal').style.display === 'flex') {
+                    requestAnimationFrame(animate);
+                }
+            }
+            animate();
+        }
+
+        function takeSnapshot() {
+            const finalCanvas = document.createElement('canvas');
+            finalCanvas.width = 320; finalCanvas.height = 240;
+            const fCtx = finalCanvas.getContext('2d');
+            
+            fCtx.drawImage(video, 0, 0, 320, 240);
+            fCtx.drawImage(canvas, 0, 0);
+            
+            const link = document.createElement('a');
+            link.download = 'Andy_Birthday_Photo.png';
+            link.href = finalCanvas.toDataURL();
+            link.click();
+        }
+
+        function closeModal() {
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
+            document.getElementById('modal').style.display = 'none';
+        }
+    </script>
+</body>
+  </html>
